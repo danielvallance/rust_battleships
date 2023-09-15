@@ -12,7 +12,7 @@ use async_std::stream::StreamExt;
 use constants::BOAT_SIZES;
 use regex::Regex;
 
-use crate::constants::TOTAL_BOAT_SQUARES;
+
 
 enum Role {
     Client, 
@@ -367,13 +367,14 @@ async fn take_turn(mut known_board:&mut[[bool;constants::BOARD_SIZE]; constants:
     println!("Your opponents board now looks like this:\n");
     print_board(&opp_board, &known_board);
 
-    let mut boat_squares = 0;
+    let mut boat_squares:usize = 0;
+    let total_boat_squares:usize = BOAT_SIZES.iter().sum();
 
     for x in 0..constants::BOARD_SIZE {
         for y in 0..constants::BOARD_SIZE {
             if opp_board[x][y] && known_board[x][y] {
                 boat_squares = boat_squares + 1;
-                if boat_squares == TOTAL_BOAT_SQUARES {
+                if boat_squares == total_boat_squares {
                     return Ok(true);
                 }
             }
@@ -394,8 +395,6 @@ async fn answer_turn(mut own_board:[[bool;constants::BOARD_SIZE]; constants::BOA
 
     let coord:Coord = serde_json::from_str(res).unwrap();
 
-    println!("{} {}", coord.x, coord.y);
-
     let arr:&mut[u8] = &mut[0;1];
 
     if own_board[coord.x][coord.y] {
@@ -405,6 +404,8 @@ async fn answer_turn(mut own_board:[[bool;constants::BOARD_SIZE]; constants::BOA
         println!("Your opponent missed on [{}, {}]\n", coord.x, coord.y);
     }
     
+    opp_knows[coord.x][coord.y] = true;
+
     stream.write_all(arr).await?;
     stream.flush();
 
@@ -443,14 +444,8 @@ async fn main() {
 
     let host_port:i32 = args[4].parse().unwrap();
 
-    //let host_board:[[bool;constants::BOARD_SIZE];constants::BOARD_SIZE] = choose_board();
-    let mut host_board:[[bool;constants::BOARD_SIZE];constants::BOARD_SIZE] = [[false;10];10];
+    let host_board:[[bool;constants::BOARD_SIZE];constants::BOARD_SIZE] = choose_board();
 
-    for x in 0..3 {
-        for y in 0..5 {
-            host_board[x][y] = true;
-        }
-    }
     
     let stream:TcpStream = start_game_conn(&role, opp_port, host_port, ip.to_string()).await.unwrap();
 
